@@ -19,9 +19,9 @@
 // https://constantinenam.com   
 
 // Game config
-let tileSize = 3.75,            //  tile size in vh - ensures responsive sizing of the game
-    boardWidth = 14,            // board width in tiles
-    boardHeight = 25,           // board heightin tiles     
+let boardWidth = 12,            // board width in tiles
+    boardHeight = 20,           // board heightin tiles     
+    tileSize = 100 / boardWidth,            //  tile size in vh - ensures responsive sizing of the game
     gameSpeed = 750;           // game speed in ms - the lower the faster
 
 // color palette
@@ -31,7 +31,7 @@ palette = { wall: "#353535",
             background: "#1A1A1A",
             structure: "#00838F",
             body: "#1A1A1A",
-            text: "#FAFAFA"
+            text: "#FAFAFA",
           };
 
 // tetris sprites stored in 4x4 two-dimensial-array tile, 
@@ -97,12 +97,11 @@ topScoreRef = topScoreRef || 0;                // check if exists - if no, set a
 
 const addTileGeneralStyle = (cssTile) => {
     cssTile.position = "absolute";  
-    cssTile.width = tileSize + "vh";
-    cssTile.height = tileSize + "vh";
+    cssTile.width = tileSize + "%";
+    cssTile.height = tileSize + "%";
     cssTile.border = "1px solid #0D0D0D"; 
     cssTile.borderRadius = "10%"; 
     cssTile.boxSizing = "border-box";
-    cssTile.zIndex = 0;
 }
 
 const build = () => {
@@ -211,17 +210,17 @@ const refreshTiles = () => {
             tileRef = document.getElementById("tetris__tile-x" + x + "y" + y),
             cssTile = tileRef.style;
         // coloring background excluding the walls
-        if (x == 0 || x == boardWidth - 1 ) cssTile.backgroundColor = palette.wall; 
-            else cssTile.backgroundColor = palette.background;
+        if (x == 0 || x == boardWidth - 1 ) {
+            cssTile.backgroundColor = palette.wall;
+        } else cssTile.backgroundColor = palette.background;
     })
 };
 
 const renderSprite = () => {
     locateSprite().map((xy) => {
-        let x = xy[0];
-        let y = xy[1];
-        let tile = document.getElementById("tetris__tile-x" + x + "y" + y);
-
+        let x = xy[0],
+            y = xy[1],
+            tile = document.getElementById("tetris__tile-x" + x + "y" + y);
         tile.style.backgroundColor = palette.sprite;
     })
 };
@@ -340,6 +339,18 @@ const handleGameTurn = () => {
 let startGame = setInterval(handleGameTurn, gameSpeed)  // starting a game
 
 window.onload = () => {
+    let gameScreen = document.createElement("div"), // creating container for the "screen"
+        cssgameScreen = gameScreen.style;
+
+    gameScreen.setAttribute("id", "tetris__screen"); // setting id
+    cssgameScreen.position = "relative"
+    cssgameScreen.width = "30vh"
+    cssgameScreen.paddingBottom = "30vh"; // using paddingBottom instead of height to preserve aspect ratio
+    
+    document.body.appendChild(gameScreen);
+
+    let gameScreenRef = document.getElementById("tetris__screen"); 
+
     // configuring board
     for (let x = 0; x < boardWidth; x++) {              
         board[x] = new Array( boardHeight ).fill(0);    // adding vertical lines (arrays of 0`s)  
@@ -358,14 +369,14 @@ window.onload = () => {
 
             tile.setAttribute("id", "tetris__tile-x" + x + "y" + y);     // adding id with coordinates
             addTileGeneralStyle(cssTile);                             // adding general styling 
-            cssTile.left = x * tileSize + "vh";                       // positioning tile on board
-            cssTile.top = y * tileSize + "vh";                           
-           
+            cssTile.left = x * tileSize + "%";                       // positioning tile on board
+            cssTile.top = (tileSize * 5) + y * tileSize + "%";                           
+
             if (tileType == 1) cssTile.background = palette.wall;            // coloring walls
             else if (tileType == 2) cssTile.background = palette.bottom;     // coloring bottom
             else cssTile.background = palette.background;                    // coloring background
 
-            document.body.appendChild(tile);                        
+            gameScreenRef.appendChild(tile);                        
         };
     };
     // rendering a container with the upcoming falling sprite
@@ -380,10 +391,10 @@ window.onload = () => {
             addTileGeneralStyle(cssTile);                      // adding general styling
 
             // setting div position
-            tile.style.left = boardWidth * tileSize + (x * tileSize) + tileSize + "vh";
-            tile.style.top = 0 + y * tileSize + "vh";
+            cssTile.left = tileSize + (x * tileSize) + "%";
+            cssTile.top = 0 + y * tileSize + "%";
 
-            document.body.appendChild(tile);
+            gameScreenRef.appendChild(tile);
         };
     };
     // creating, id`ing and positioning top and session score
@@ -395,16 +406,92 @@ window.onload = () => {
         score.setAttribute("id", "tetris__session-score");
         topScore.setAttribute("id", "tetris__top-score");            
         cssScoreRef.position = cssTopScoreRef.position = "absolute";
-        cssScoreRef.color    = cssTopScoreRef.color = palette.text;
-        cssScoreRef.left     = cssTopScoreRef.left     = boardWidth * tileSize + tileSize + "vh";
-        cssScoreRef.top      = 7 * tileSize + "vh";
-        cssTopScoreRef.top   = 5 * tileSize + "vh";
+        cssScoreRef.color    = cssTopScoreRef.color    = palette.text;
+        cssScoreRef.left     = cssTopScoreRef.left      = tileSize * 6 + "%";
+        cssScoreRef.top      = tileSize + "%";
+        cssTopScoreRef.top   = "0";
 
-        document.body.appendChild(score);
-        document.body.appendChild(topScore);
+        gameScreenRef.appendChild(score);
+        gameScreenRef.appendChild(topScore);
 
+    //
+
+    let buttons = [ { code: "ArrowLeft", val: "◁"},
+                    { code: "ArrowRight", val: "▷"},
+                    { code: "ArrowDown", val: "▽"},
+                    { code: "ArrowUp", val: "△"},
+                    { code: "Space", val: "◯"},
+                  ]
+    
+    for (let i = 0; i < buttons.length; i++) {
+        let button = document.createElement("button"), // creating container for the "screen"
+        cssButton = button.style;
+
+        button.setAttribute("id", "tetris__button" + i); // setting id
+        cssButton.position = "absolute"
+
+        switch (i) {
+            case 0:
+                cssButton.left = tileSize + "%";
+                cssButton.top  = (tileSize * 29) + "%";
+                break;
+            case 1:
+                cssButton.left = tileSize * 5 + "%";
+                cssButton.top  = (tileSize * 29) + "%";
+                break;
+            case 2:
+                cssButton.left = tileSize * 3 + "%";
+                cssButton.top  = (tileSize * 31) + "%";
+                break;
+            case 3:
+                cssButton.left = tileSize * 3 + "%";
+                cssButton.top  = (tileSize * 27) + "%";
+                break;
+            default: 
+                cssButton.left = tileSize * 9 + "%";
+                cssButton.top  = (tileSize * 29) + "%";
+        };
+
+        cssButton.background = palette.wall
+
+        cssButton.width = tileSize * 2 + "%"
+        cssButton.height = tileSize * 2 + "%"
+        
+        gameScreenRef.appendChild(button);
+
+        let buttonRef = document.getElementById("tetris__button" + i); 
+        buttonRef.innerHTML = buttons[i].val;
+
+        buttonRef.addEventListener("mousedown", () => {
+            refreshTiles();
+            // checking if there is no barrier before moving sprite
+            switch (buttons[i].code) {
+                case "ArrowLeft":
+                    if (!checkForBarrier("left")) pushSpriteLeft();
+                    break;
+                case "ArrowRight":
+                    if (!checkForBarrier("right")) pushSpriteRight();
+                    break;
+                case "ArrowDown":
+                    if (!checkForBarrier("down")) pushSpriteDown();
+                    break;
+                case "ArrowUp":
+                    // bringing sprite max down
+                    while (checkForBarrier("down") == false) pushSpriteDown();
+                    break;
+                case "Space":
+                    // not the best rotation mechanism, but overall prevents sprite colliding with other structures
+                    if (!checkForBarrier("left") && !checkForBarrier("right") && !checkForBarrier("down")) {
+                        rotateSprite();
+                    }
+            };
+            renderSprite();
+        })
+    }             
+ 
     resetGame(); // reset is needed for the initial load, as it also configures score board 
 };
+
 
 // keyboard controls
 document.addEventListener("keydown", e => {
@@ -424,7 +511,7 @@ document.addEventListener("keydown", e => {
             // bringing sprite max down
             while (checkForBarrier("down") == false) pushSpriteDown();
             break;
-        default:
+        case "Space":
             // not the best rotation mechanism, but overall prevents sprite colliding with other structures
             if (!checkForBarrier("left") && !checkForBarrier("right") && !checkForBarrier("down")) {
                 rotateSprite();
@@ -437,8 +524,15 @@ document.addEventListener("keydown", e => {
 // below code enhances visual aspect of the game, though remains discretionary;
 // from here, everything can be removed without affecting gameplay
 
-document.body.style.backgroundColor = palette.body;
-document.body.style.fontFamily = "Lucida Console";
+let cssBody = document.body.style
+
+cssBody.display = "flex"
+cssBody.justifyContent = "center"
+cssBody.alignItems = "center"
+cssBody.backgroundColor = palette.body;
+cssBody.fontFamily = "Lucida Console";
+
+
 
 // animation for clearRow()
 const clearRowAnim = (tileId, x, y) => {
@@ -447,13 +541,16 @@ const clearRowAnim = (tileId, x, y) => {
             shardId = "tetris__shard-x" + x + i + "y" + y + i,  // shard's id string
             cssShard = shard.style;     
 
+        let shardColors = ["#F44336", "#374046", "#03A9F4", "#4CAF50", "#3F51B5", "#374046", "#F44336", "#9C27B0"];
+
         shard.setAttribute("id", shardId);
-        // general styling
-        position = "absolute";
-        cssShard.width = (tileSize / 2) + "vh";
-        cssShard.height = (tileSize / 2) + "vh";
+        // general shard styling, 
+        cssShard.position = "absolute";
+        cssShard.width = "50%";
+        cssShard.height = "50%";
         cssShard.borderRadius = "10%";
-        cssShard.backgroundColor = palette.structure 
+        cssShard.backgroundColor = shardColors[getRndmNum(0, shardColors.length)];
+        // cssShard.backgroundColor = palette.sprite
         cssShard.zIndex = 1;
 
         // positioning each shard to one of the tile corners
@@ -469,22 +566,22 @@ const clearRowAnim = (tileId, x, y) => {
         }
 
         tileId.appendChild(shard); // appending to DOM
-
+    
         let shardRef = document.getElementById(shardId); 
         // creating random position in pixels for shard
-        const rndmPx = () => {return (getRndmNum(-tileSize*2, tileSize*2) + "vh")};
+        const rndmPx = () => {return (getRndmNum(-tileSize*20, tileSize*20) + "%")};
         // animation style
         let anim = [
-            { transform: "translate(0)", opacity: 1},
-            { transform: `translate(${rndmPx() + " , " + rndmPx()})`, opacity: -1}
+            { transform: "translate(0) rotate(0)", opacity: 1},
+            { transform: `translate(${rndmPx() + " , " + rndmPx()}) rotate(${getRndmNum(-180, 180)}deg)`, opacity: 0}
         ];
         // animation speed and duration
-        let animTiming = {duration: 275, iterations: Infinity} // animation should be slightly longer than timeout before div removal
+        let animTiming = {duration: 325, iterations: Infinity} // animation should be slightly longer than timeout before div removal
 
         shardRef.animate(anim, animTiming); // adding animation to the shard
         
         setTimeout(() => {
             shardRef.remove(); // remove shard from DOM after playing animation;
-        }, 250);
+        }, 300);
     }
 }
