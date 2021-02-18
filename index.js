@@ -25,9 +25,8 @@ let boardWidth = 12,            // board width in tiles
     gameSpeed = 750;           // game speed in ms - the lower the faster
 
 // color palette
-palette = { wall: "#353535",
-            bottom: "#353535",
-            sprite: "#F9A825",
+palette = { border: "#353535",
+            sprite: "#FBC02D",
             background: "#1A1A1A",
             structure: "#00838F",
             body: "#1A1A1A",
@@ -90,19 +89,8 @@ let activeSprite = getRndmSprite(),                             // declaring act
     upcomingSprite = getRndmSprite(),                           // declaring upcoming sprite
     spritePosition = {x: Math.round(boardWidth / 2) - 2,y: -1}; // declaring active sprite position
 
-let score = 0,                                 // initial score
-    topScoreRef = localStorage['topScore'];    // using local storage to keep top score;              
-
-topScoreRef = topScoreRef || 0;                // check if exists - if no, set as 0
-
-const addTileGeneralStyle = (cssTile) => {
-    cssTile.position = "absolute";  
-    cssTile.width = tileSize + "%";
-    cssTile.height = tileSize + "%";
-    cssTile.border = "1px solid #0D0D0D"; 
-    cssTile.borderRadius = "10%"; 
-    cssTile.boxSizing = "border-box";
-}
+let score = 0,                                      // initial score
+    topScoreRef = localStorage['topScore'] || 0;    // using local storage to keep top score;
 
 const build = () => {
     locateSprite().map((xy) => {
@@ -211,7 +199,7 @@ const refreshTiles = () => {
             cssTile = tileRef.style;
         // coloring background excluding the walls
         if (x == 0 || x == boardWidth - 1 ) {
-            cssTile.backgroundColor = palette.wall;
+            cssTile.backgroundColor = palette.border;
         } else cssTile.backgroundColor = palette.background;
     })
 };
@@ -339,13 +327,15 @@ const handleGameTurn = () => {
 let startGame = setInterval(handleGameTurn, gameSpeed)  // starting a game
 
 window.onload = () => {
+    document.body.style.backgroundColor = palette.body;
+
     let gameScreen = document.createElement("div"), // creating container for the "screen"
         cssgameScreen = gameScreen.style;
 
     gameScreen.setAttribute("id", "tetris__screen"); // setting id
     cssgameScreen.position = "relative"
-    cssgameScreen.width = "30vh"
-    cssgameScreen.paddingBottom = "30vh"; // using paddingBottom instead of height to preserve aspect ratio
+    cssgameScreen.width = "35vh"
+    cssgameScreen.paddingBottom = "35vh"; // using padding instead of height (preserves game ratio)
     
     document.body.appendChild(gameScreen);
 
@@ -364,19 +354,24 @@ window.onload = () => {
     for (let y = 0; y < boardHeight; y++) {
         for (let x = 0; x < boardWidth; x++) {
             let tile = document.createElement("div"), // creating tile as a div
-                cssTile = tile.style,              // reference to pass through addTileGeneralStyle()
+                cssTile = tile.style,              // reference to pass through addTileOptionalStyle()
                 tileType = board[x][y];;              // tile type reference
 
             tile.setAttribute("id", "tetris__tile-x" + x + "y" + y);     // adding id with coordinates
-            addTileGeneralStyle(cssTile);                             // adding general styling 
             cssTile.left = x * tileSize + "%";                       // positioning tile on board
             cssTile.top = (tileSize * 5) + y * tileSize + "%";                           
-
-            if (tileType == 1) cssTile.background = palette.wall;            // coloring walls
-            else if (tileType == 2) cssTile.background = palette.bottom;     // coloring bottom
+            cssTile.position = "absolute";  
+            cssTile.width = tileSize * 0.85 + "%";
+            cssTile.height = tileSize * 0.85 + "%";
+            if (tileType == 1) cssTile.background = palette.border;            // coloring walls
+            else if (tileType == 2) cssTile.background = palette.border;     // coloring bottom
             else cssTile.background = palette.background;                    // coloring background
 
-            gameScreenRef.appendChild(tile);                        
+            // checks if optional styling is present in the code before firing (see end of file)
+            if (typeof addTileOptionalStyle === "function") addTileOptionalStyle(cssTile);   
+
+            gameScreenRef.appendChild(tile);       
+
         };
     };
     // rendering a container with the upcoming falling sprite
@@ -388,8 +383,11 @@ window.onload = () => {
                 cssTile = tile.style;
 
             tile.setAttribute("id", "tetris__upcoming-" + index); // setting id
-            addTileGeneralStyle(cssTile);                      // adding general styling
-
+            // checks if optional styling is present in the code before firing (see end of file)
+            if (typeof addTileOptionalStyle === "function") addTileOptionalStyle(cssTile);
+            cssTile.position = "absolute";  
+            cssTile.width = tileSize * 0.85 + "%";
+            cssTile.height = tileSize * 0.85 + "%";
             // setting div position
             cssTile.left = tileSize + (x * tileSize) + "%";
             cssTile.top = 0 + y * tileSize + "%";
@@ -414,22 +412,23 @@ window.onload = () => {
         gameScreenRef.appendChild(score);
         gameScreenRef.appendChild(topScore);
 
-    //
-
+    // on-screen control buttons
     let buttons = [ { code: "ArrowLeft", val: "◁"},
                     { code: "ArrowRight", val: "▷"},
                     { code: "ArrowDown", val: "▽"},
                     { code: "ArrowUp", val: "△"},
-                    { code: "Space", val: "◯"},
+                    { code: "Space", val: "☉"},
                   ]
-    
+    // dynamically creating buttons
     for (let i = 0; i < buttons.length; i++) {
-        let button = document.createElement("button"), // creating container for the "screen"
-        cssButton = button.style;
+        let button = document.createElement("button"), 
+                cssButton = button.style;
 
         button.setAttribute("id", "tetris__button" + i); // setting id
+        // sizing and positioning
         cssButton.position = "absolute"
-
+        cssButton.width = tileSize * 2 + "%"
+        cssButton.height = tileSize * 2 + "%"
         switch (i) {
             case 0:
                 cssButton.left = tileSize + "%";
@@ -450,22 +449,19 @@ window.onload = () => {
             default: 
                 cssButton.left = tileSize * 9 + "%";
                 cssButton.top  = (tileSize * 29) + "%";
-        };
-
-        cssButton.background = palette.wall
-
-        cssButton.width = tileSize * 2 + "%"
-        cssButton.height = tileSize * 2 + "%"
-        
+        }; 
         gameScreenRef.appendChild(button);
 
         let buttonRef = document.getElementById("tetris__button" + i); 
+        // inserting "icon" 
         buttonRef.innerHTML = buttons[i].val;
+        // checks if optional styling is present in the code before firing (see end of file)
+        if (typeof addBtnStyle === "function") addBtnStyle(buttonRef.style); 
 
-        buttonRef.addEventListener("mousedown", () => {
+        // switch (buttons[i].code) {
+        const handleControl = (stuff) => {
             refreshTiles();
-            // checking if there is no barrier before moving sprite
-            switch (buttons[i].code) {
+            switch (stuff.code) {
                 case "ArrowLeft":
                     if (!checkForBarrier("left")) pushSpriteLeft();
                     break;
@@ -486,12 +482,47 @@ window.onload = () => {
                     }
             };
             renderSprite();
+        }
+        let interval
+        let timeOut
+        // on screen controls - same as keyboard
+        // TODO - merge on screen and keyboard controls as they follow same logic
+        buttonRef.addEventListener("mousedown", () => {
+            
+            timeOut = setTimeout(()=> {
+                interval = setInterval(()=>handleControl(buttons[i]), 100);
+            }, 500);
+          
+
+            // checking if there is no barrier before moving sprite
+            
+            
         })
-    }             
- 
+        buttonRef.addEventListener("mouseup", () => {
+            clearInterval(interval);
+            clearTimeout(timeOut)
+          });
+
+    }          
+    buttonRef.addEventListener("ontouchstart", () => {
+            
+        timeOut = setTimeout(()=> {
+            interval = setInterval(()=>handleControl(buttons[i]), 100);
+        }, 500);
+      
+
+        // checking if there is no barrier before moving sprite
+        
+        
+    })
+    buttonRef.addEventListener("ontouchend", () => {
+        clearInterval(interval);
+        clearTimeout(timeOut)
+      });
+
+     
     resetGame(); // reset is needed for the initial load, as it also configures score board 
 };
-
 
 // keyboard controls
 document.addEventListener("keydown", e => {
@@ -529,8 +560,36 @@ let cssBody = document.body.style
 cssBody.display = "flex"
 cssBody.justifyContent = "center"
 cssBody.alignItems = "center"
-cssBody.backgroundColor = palette.body;
+
 cssBody.fontFamily = "Lucida Console";
+
+const addTileOptionalStyle = (cssTile) => {  
+    cssTile.border = "1px solid rgba(255,255,255,.05 )"; 
+    cssTile.borderRadius = "35%"; 
+    cssTile.boxSizing = "border-box";
+}
+
+const addBtnStyle = (cssButton) => {
+
+    //   .tetris__btn:active {
+    //     box-shadow:  none;
+    //     color:  #1A1A1A;
+    //     background-color:  #FBC02D !important;
+    //   }
+      
+      
+    cssButton.fontSize =  "150%";
+    cssButton.outline = "none"
+    cssButton.border = `2px solid ${palette.sprite}`;
+    cssButton.cursor = "pointer"
+    cssButton.borderRadius = "35%"
+    cssButton.transition = ".1s ease-in-out"
+    cssButton.userSelect = "none";
+    cssButton.background = palette.background;
+    cssButton.color =  palette.sprite;
+}
+
+// const addBtnPressedStyle = (cssButton) 
 
 
 
@@ -548,9 +607,8 @@ const clearRowAnim = (tileId, x, y) => {
         cssShard.position = "absolute";
         cssShard.width = "50%";
         cssShard.height = "50%";
-        cssShard.borderRadius = "10%";
+        cssShard.borderRadius = "35%";
         cssShard.backgroundColor = shardColors[getRndmNum(0, shardColors.length)];
-        // cssShard.backgroundColor = palette.sprite
         cssShard.zIndex = 1;
 
         // positioning each shard to one of the tile corners
