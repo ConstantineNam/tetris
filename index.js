@@ -16,7 +16,13 @@
 // https://github.com/ConstantineNam/tetris
 //
 // Created by:
-// https://constantinenam.com
+// https://constantinenam.com   
+
+// Game config
+let tileSize = 3.75,            //  tile size in vh - ensures responsive sizing of the game
+    boardWidth = 14,            // board width in tiles
+    boardHeight = 25,           // board heightin tiles     
+    gameSpeed = 750;           // game speed in ms - the lower the faster
 
 // color palette
 palette = { wall: "#353535",
@@ -67,133 +73,160 @@ let spriteA = [0,0,0,0,       // 0`s represent empty space
 // array that stores all the sprites
 let sprites = [spriteA, spriteB, spriteC, spriteD, spriteE, spriteF, spriteG];
 
-let tileSize = 3.75,            //  tile size in vw - ensures responsive sizing of the game
-    boardWidth = 14,            // board width in tiles
-    boardHeight = 25,           // board heightin tiles     
-    gameSpeed = 750,           // game speed in ms - the lower the faster
-    score = 0;                  // initial score
-
 // initial state of board as a one-dementional array of 0`s
 let board = new Array(boardHeight).fill(0);
 
-// function to add tile styling 
-const addTileStyle = (tile) => {
-    tile.style.boxSizing = "border-box";
-    tile.style.borderRadius = "10%"; 
-    tile.style.border = "1px solid #0D0D0D";
+// random number generator with ability to set range
+const getRndmNum = (min,max) => {
+    return Math.floor((Math.random() * (max -min) + min));
 }
 
-window.onload = () => {
-    // some extra styling
-    document.body.style.backgroundColor = palette.body;
-    document.body.style.fontFamily = "Lucida Console";
+// returning a random sprite from the list
+const getRndmSprite = () => {
+    return [...sprites[getRndmNum(0, sprites.length)]];
+};
 
-    // configuring board
-    for (let x = 0; x < boardWidth; x++) {
-        // adding "vertical"  lines (arrays of 0`s)
-        board[x] = new Array( boardHeight ).fill(0);
-        // drawing the bottom with 2`s
-        board[x][boardHeight - 1] = 2;
+let activeSprite = getRndmSprite(),                             // declaring active sprite
+    upcomingSprite = getRndmSprite(),                           // declaring upcoming sprite
+    spritePosition = {x: Math.round(boardWidth / 2) - 2,y: -1}; // declaring active sprite position
+
+let score = 0,                                 // initial score
+    topScoreRef = localStorage['topScore'];    // using local storage to keep top score;              
+
+topScoreRef = topScoreRef || 0;                // check if exists - if no, set as 0
+
+const addTileGeneralStyle = (cssTile) => {
+    cssTile.position = "absolute";  
+    cssTile.width = tileSize + "vh";
+    cssTile.height = tileSize + "vh";
+    cssTile.border = "1px solid #0D0D0D"; 
+    cssTile.borderRadius = "10%"; 
+    cssTile.boxSizing = "border-box";
+    cssTile.zIndex = 0;
+}
+
+const build = () => {
+    locateSprite().map((xy) => {
+        let x = xy[0],
+            y = xy[1],
+            tile = document.getElementById("tetris__tile-x" + x + "y" + y);
+
+        board[x][y] = 3;                                // turning sprite tile into structure tiles
+        tile.style.backgroundColor = palette.structure; // coloring appropriately
+    })
+    recalculateScore(0); // adding extra score 
+};
+
+const checkIfGameOver = () => {
+    let topRow = []
+    for (let x = 0; x < boardWidth - 1; x++) {   // scanning top line
+        let ref = board[x][1];                   // getting tile indexes
+        topRow.push(ref);
     };
-
-    // drawing the walls with 1`s
-    for (let y = 0; y < boardHeight; y++) {
-        board[0][y] = 1;
-        board[boardWidth - 1][y] = 1;
+    if (topRow.includes(3)) {
+        resetGame();                             // resetting game if there are structure tiles
     };
+};
 
-    // Rendering board in browser as HTML
-    for (let y = 0; y < boardHeight; y++) {
-        for (let x = 0; x < boardWidth; x++) {
-            // creating tile as a div
-            let tile = document.createElement("div");
-            
-            // adding a unique id with its own coordinates to each div
-            tile.setAttribute("id", "tetris__tile-x" + x + "y" + y);
+// checking if there is a wall/bottom in the direction sprite was requested to move to, returns boolean
+// this somehow wouldnt work with locateSprite(), will have to optimize later
+const checkForBarrier = (direction) => {
+    let i = 0;  // index to loop through the sprite array
+    for (let y = spritePosition.y; y < spritePosition.y + 4; y++) {
+        for (let x = spritePosition.x; x < spritePosition.x + 4; x++, i++) {
+            if (activeSprite[i] == 1) {
 
-            // styling tile
-            addTileStyle(tile);
-
-            // setting tile"s size 
-            tile.style.width = tileSize + "vh";
-            tile.style.height = tileSize + "vh";
-
-            // placing each tile on board in a proper position:
-            tile.style.position = "absolute";      
-            tile.style.left = x * tileSize + "vh";  
-            tile.style.top = y * tileSize + "vh";   
-            // tile.style.zIndex = 0;
-            
-            let tileType = board[x][y];
-            if (tileType == 0) 
-                tile.style.background = palette.background; // blank tiles color
-            if (tileType == 1) 
-                tile.style.background = palette.wall;       // wall tiles color
-            if (tileType == 2) 
-                tile.style.background = palette.bottom;     //  bottom tiles color
-
-            document.body.appendChild(tile);
+                let tileBelow = board[x][y + 1];
+                let tileToLeft = board[x - 1][y];
+                let tileToRight = board[x + 1][y];
+           
+                if ( direction == "left" && (tileToLeft == 1 || tileToLeft == 3)) return true;
+                if (direction == "right" && (tileToRight == 1 || tileToRight == 3)) return true;
+                if (direction == "down" && (tileBelow == 3 || tileBelow == 2) ) {
+                    placeSprite();
+                    return true;
+                };
+            };
         };
     };
-
-    gameReset();
-
-    // sprite movement consisting of several steps:
-    setInterval(() => {
-        // refreshing all 0`s and turn into background tiles
-        refreshTiles();         
-        
-        // if no obstacle beneath, move sprite down
-        if (!checkForBarrier("down")) {
-            spritePosition.y += 1; // not using pushSpriteDown() to preserve the score
-        };
-        
-        // render sprite according to its position
-        renderSprite();
-
-    }, gameSpeed);
+    return false;
 };
 
-
-// choosing a returning a random sprite from the array of sprites
-const createRandomSprite = () => {
-    let randomNumber = Math.floor((Math.random() * sprites.length));
-
-    return [...sprites[randomNumber]];
-};
-
-// creating active sprite that will be controlled with keyboard
-let activeSprite = createRandomSprite();
-
-// creating upcoming sprite
-let upcomingSprite = createRandomSprite();
-
-// rendering a container with the upcoming falling sprite
-let index = 0;
-for (let y = 0; y < 4; y++) {       // "y" is container"s height
-    for (let x = 0; x < 4; x++, index++) {   // "x" is container"s width
-
-        // creating, id"ing and positioning tiles the same way as the board
-        let tile = document.createElement("div");
-        tile.style.width = tileSize + "vh";
-        tile.style.height = tileSize + "vh";
-        tile.setAttribute("id", "tetris__upcoming-" + index);
-
-        tile.style.position = "absolute";
-
-        // setting position absolute to the hierarchically closest relative parent
-        tile.style.left = boardWidth * tileSize + (x * tileSize) + tileSize + "vh";
-        tile.style.top = 0 + y * tileSize + "vh";
-        tile.style.backgroundColor = palette.background 
-        // styling tile
-        addTileStyle(tile);
-
-        document.body.appendChild(tile);
+// clearing row full of tile with index 3
+const clearRow = (y) => {
+    for (let x = 1; x < boardWidth - 1; x++) {
+        let tileRef = document.getElementById("tetris__tile-x" + x + "y" + y);
+        // checks if optional animation is present in the code before firing (see end of file)
+        if (typeof clearRowAnim === "function") clearRowAnim(tileRef, x, y); 
+        board[x][y] = 0;
+        tileRef.style.backgroundColor = palette.background;
     };
 };
 
-// rendering sprite inside upcoming container
-const renderUpcoming = () => {
+// scanning board rows to check if any are full 
+const clearSolidRows = () => {
+    let clearedRows = 0;                                // counting home many rows are cleaned to add score
+
+    for (let y = 0; y < boardHeight - 1; y++) {         // looping through each row (except bottom line)
+        let row = []                                    // keeping tile indexes of each row to further scan it
+            for (let x = 1; x < boardWidth - 1; x++) {  // looping through each tile in a row (except walls)
+                let ref = board[x][y];
+                row.push(ref);
+            };
+        if (row.every( tileIndex => tileIndex === 3 )) { // check if row consists of structure tiles only
+            clearedRows += 1;
+            clearRow(y);                                 // if yes, delete this row
+            pushRowsDown(y);                             // and then push rows down
+        };
+    };
+    if (clearedRows > 0) {
+        recalculateScore(clearedRows);                   // adding scores if any rows are cleared
+    };
+};
+
+// adding total score depending on number of rows cleared
+const recalculateScore = (clearedRows) => {
+    switch (clearedRows) {
+        case 1:  score += 100;
+            break;
+        case 2:  score += 250;
+            break;
+        case 3:  score += 500;
+            break;
+        default: score += 10; // default adds extra points for every sprite built on board
+    };
+    document.getElementById("tetris__session-score").innerHTML = "Score: " + score.toString();
+};
+
+const refreshScores = () => {
+    document.getElementById("tetris__session-score").innerHTML = "Score: 0";
+    document.getElementById("tetris__top-score").innerHTML = "Top: " + localStorage["topScore"] || 0;
+};
+
+// refreshing all 0"s to background 
+const refreshTiles = () => {
+    locateSprite().map((xy) => {
+        let x = xy[0],
+            y = xy[1],
+            tileRef = document.getElementById("tetris__tile-x" + x + "y" + y),
+            cssTile = tileRef.style;
+        // coloring background excluding the walls
+        if (x == 0 || x == boardWidth - 1 ) cssTile.backgroundColor = palette.wall; 
+            else cssTile.backgroundColor = palette.background;
+    })
+};
+
+const renderSprite = () => {
+    locateSprite().map((xy) => {
+        let x = xy[0];
+        let y = xy[1];
+        let tile = document.getElementById("tetris__tile-x" + x + "y" + y);
+
+        tile.style.backgroundColor = palette.sprite;
+    })
+};
+
+const renderUpcomingSprite = () => {
     for (let i = 0; i < 16; i++) {
         let tile = document.getElementById("tetris__upcoming-" + i);
         upcomingSprite[i] == 1 ? 
@@ -202,111 +235,81 @@ const renderUpcoming = () => {
     };
 };
 
-//  create and default position the active sprite
-let spritePosition = { x: Math.round(boardWidth / 2) - 2,  // centering sprite
-                       y: -1                               // bringing it down by sprite"s height
-                     };
-
-const resetSpritePosition = () => {
-    spritePosition = { x: Math.round(boardWidth / 2) - 2, 
-                       y: -1            
-                     };
-};
-
-// full board reset
 const resetBoard = () => {
-    // quering X coordinate
-    for (let x = 1; x < boardWidth - 1; x++) {
-        // quering Y coordinate
-        for (let y = 0; y < boardHeight - 1; y++) {
+    // setting all tiles as 0`s (except walls and bottom)
+    for (let x = 1; x < boardWidth - 1; x++) {      // quering X coordinate
+        for (let y = 0; y < boardHeight - 1; y++) { // quering Y coordinate
             let tile = document.getElementById("tetris__tile-x" + x + "y" + y);
-            // declaring all tiles as 0`s (except walls and bottom)
-            board[x][y] = 0;
+            board[x][y] = 0;    
             tile.style.backgroundColor = palette.background;
         };
     };
-    // creating new active and upcoming sprite, resetting position to default
-    activeSprite = createRandomSprite();
-    upcomingSprite = createRandomSprite();
-    renderUpcoming()
-    spritePosition = { x: Math.round(boardWidth / 2) - 2,  
-                       y: -2                  
-                     };
+    activeSprite = getRndmSprite();     // create new active sprite
+    upcomingSprite = getRndmSprite();   // create new upcoming sprite
+    renderUpcomingSprite()                    // render upcoming sprite
+    spritePosition = { x: Math.round(boardWidth / 2) - 2, y: -2};
 };
 
-// using local storage to keep top score; if doesnt exist - set to 0
-localStorage['topScore'] = localStorage['topScore'] || 0;
-
-// full game reset
-const gameReset = () => {
+const resetGame = () => {
     resetBoard();
-    renderScoreBoard();
-    // updating top score if its higher than the prev one
+    refreshScores();
+    score = 0;          // resetting session score to 0
+    
     let storedTopScore = localStorage['topScore'];
+    // updating top score if its higher than the prev one
     if (storedTopScore && score > storedTopScore) {
         localStorage['topScore'] = score;
     }
     // updating top score on score board
     document.getElementById("tetris__top-score").innerHTML = "Top: " + localStorage["topScore"] || 0;
-    // resetting session score to 0
-    score = 0;
 };
 
-// keyboard controls
-document.addEventListener("keydown", e => {
-    let key = e.code
-   
-    refreshTiles();
-    
-    // checking if there is no barrier before moving sprite
-    switch (key) {
-        case "ArrowLeft":
-            if (!checkForBarrier("left")) pushSpriteLeft();
-            break;
-        case "ArrowRight":
-            if (!checkForBarrier("right")) pushSpriteRight();
-            break;
-        case "ArrowDown":
-            if (!checkForBarrier("down")) pushSpriteDown();
-            break;
-        case "ArrowUp":
-            // bringing sprite max down
-            while (checkForBarrier("down") == false) {
-                pushSpriteDown();
-            }
-            break;
-        default:
-            // not the best rotation mechanism, but overall prevents sprite colliding with other structures
-            if (!checkForBarrier("left") && !checkForBarrier("right") && !checkForBarrier("down")) {
-                rotateSprite();
-            }
+// finds and scans 4x4 sprite and returns coordinates of solid tiles
+const locateSprite = () => {
+    let coordinates = [],
+        i = 0;  // index to loop through the sprite array
+
+    for (let y = spritePosition.y; y < spritePosition.y + 4; y++) {   // quering Y coordinate
+        for (let x = spritePosition.x; x < spritePosition.x + 4; x++, i++) { // quering X coordinate
+            if (activeSprite[i] == 1) {
+                let tileRef = document.getElementById("tetris__tile-x" + x + "y" + y); 
+                // if tile found,pushing coordinates to further return it
+                if (tileRef) coordinates.push([x,y]);
+            };
+        };
     };
-   
-    renderSprite();
-})
-
-const pushSpriteDown = () => {
-    spritePosition.y += 1;
-    // adding extra score for speeding up the game
-    scoreCalc(0); 
-};
-
-const pushSpriteLeft = () => {
-    spritePosition.x -=1;
-};
-
-const pushSpriteRight = () => {
-    spritePosition.x += 1;
+    return(coordinates)
 };
 
 const placeSprite = () => {
-    build();                                // build current tetromino onto the well
-    scanTopRow();                           // end game if structures reaches top line
-    scanRows();                             // clear rows if full
+    build();                                // building current tetromino onto the well
+    checkIfGameOver();                      // check if game 
+    clearSolidRows();                       // clear rows if completely filled
     activeSprite = [...upcomingSprite];     // swap current and upcoming sprite
-    upcomingSprite = createRandomSprite();  // generate next sprite
-    renderUpcoming();                       // update upcoming container
+    upcomingSprite = getRndmSprite();     // generate next sprite
+    renderUpcomingSprite();                       // update upcoming container
     resetSpritePosition();                  // reset active sprite position
+};
+
+// pushing down rows that are above the cleared row
+const pushRowsDown = (y) => {
+    for (let x = 1; x < boardWidth - 1; x++) {      // looping through each column
+        
+        // "shifting down" an entire column by:
+        board[x].splice(y, 1);                      // 1) removing last index tile
+        board[x].splice(0, 0, 0);                   // 2) adding 0 index tile at front
+
+        // looping through each row and further refreshing board look
+        for (let y = 0; y < boardHeight - 1; y++) {
+            let tile = document.getElementById("tetris__tile-x" + x + "y" + y);
+            if (board[x][y] == 0) tile.style.backgroundColor = palette.background;
+            else tile.style.backgroundColor = palette.structure;
+        };
+    };
+};
+
+const resetSpritePosition = () => {
+    spritePosition = {x: Math.round(boardWidth / 2) - 2, y: -1};
 };
 
 const rotateSprite = () => {
@@ -322,298 +325,166 @@ const rotateSprite = () => {
     }
 };
 
-// scans the board and returns coordinates of tiles with 1
-const scanBoard = () => {
-    // array that will contain all coordinates of tiles with 1
-    let coordinates = [];    
-    // index for the tiles found after quering Y and X 
-    let i = 0;
-    // quering Y coordinate
-    for (let y = spritePosition.y; y < spritePosition.y + 4; y++) {
-        // quering X coordinate
-        for (let x = spritePosition.x; x < spritePosition.x + 4; x++, i++) {
-            
-            if (activeSprite[i] == 1) {
-                // checking if such a tile exists as an HTML div 
-                let tile = document.getElementById("tetris__tile-x" + x + "y" + y);
-                // and finally pushing coordinates of each tile with 1 as an array
-                if (tile) {
-                    coordinates.push([x,y]) 
-                };
-            };
-        };
+// functions for sprite movements
+const pushSpriteDown = () => {spritePosition.y += 1},
+      pushSpriteLeft = () => {spritePosition.x -= 1},
+      pushSpriteRight = () => {spritePosition.x += 1};
+
+// setting a game turn
+const handleGameTurn = () => {
+    refreshTiles();                                 // refreshing all 0`s color them as background
+    if (!checkForBarrier("down")) pushSpriteDown(); // pushing sprite position down
+    renderSprite();                                 // coloring sprite 
+}
+
+let startGame = setInterval(handleGameTurn, gameSpeed)  // starting a game
+
+window.onload = () => {
+    // configuring board
+    for (let x = 0; x < boardWidth; x++) {              
+        board[x] = new Array( boardHeight ).fill(0);    // adding vertical lines (arrays of 0`s)  
+        board[x][boardHeight - 1] = 2;                  // drawing the bottom line with 2`s
     };
+    // drawing the walls with 1`s
+    for (let y = 0; y < boardHeight; y++) {     
+        board[boardWidth - 1][y] = board[0][y] = 1;
+    };
+    // initial board rendering in browser as HTML
+    for (let y = 0; y < boardHeight; y++) {
+        for (let x = 0; x < boardWidth; x++) {
+            let tile = document.createElement("div"), // creating tile as a div
+                cssTile = tile.style,              // reference to pass through addTileGeneralStyle()
+                tileType = board[x][y];;              // tile type reference
 
-    return(coordinates)
-};
-
-// "builds" structure tiles (those with index 3) on board
-const build = () => {
-    scanBoard().map((xy) => {
-        let x = xy[0];
-        let y = xy[1];
-        let tile = document.getElementById("tetris__tile-x" + x + "y" + y);
-        
-        board[x][y] = 3;
-        tile.style.backgroundColor = palette.structure;
-    })
-};
-
-// renders sprite on the board; used for both initial render and further movement on the board
-const renderSprite = () => {
-    scanBoard().map((xy) => {
-        let x = xy[0];
-        let y = xy[1];
-        let tile = document.getElementById("tetris__tile-x" + x + "y" + y);
-
-        tile.style.backgroundColor = palette.sprite;
-    })
-};
-
-// checking if there is a wall/bottom in the direction sprite was requested to move to, returns boolean
-// this somehow wouldnt work with scanBoard(), will have to optimize later
-const checkForBarrier = (direction) => {
-    let index = 0;
-
-    for (let y = spritePosition.y; y < spritePosition.y + 4; y++) {
-        for (let x = spritePosition.x; x < spritePosition.x + 4; x++, index++) {
-            if (activeSprite[index] == 1) {
-
-                let tile = document.getElementById("tetris__tile-x" + x + "y" + y);
-
-                // reference to the tile below the current tile 
-                let tileBelow = board[x][y + 1];
-                let tileToLeft = board[x - 1][y];
-                let tileToRight = board[x + 1][y];
+            tile.setAttribute("id", "tetris__tile-x" + x + "y" + y);     // adding id with coordinates
+            addTileGeneralStyle(cssTile);                             // adding general styling 
+            cssTile.left = x * tileSize + "vh";                       // positioning tile on board
+            cssTile.top = y * tileSize + "vh";                           
            
-                if (tile) {
-                    // returns true if hitting left wall
-                    if ( direction == "left" && (tileToLeft == 1 || tileToLeft == 3) ) {
-                        return true;
-                    };
-                    // returns true if the 
-                    if (direction == "right" && (tileToRight == 1 || tileToRight == 3) ) {
-                        return true;
-                    };
-                    // returns true if hitting bottom, and places sprite at the bottom
-                    if (direction == "down" && (tileBelow == 3 || tileBelow == 2) ) {
-                        placeSprite();
-                        return true;
-                    };
-                };
-            };
+            if (tileType == 1) cssTile.background = palette.wall;            // coloring walls
+            else if (tileType == 2) cssTile.background = palette.bottom;     // coloring bottom
+            else cssTile.background = palette.background;                    // coloring background
+
+            document.body.appendChild(tile);                        
         };
     };
-    return false;
-};
+    // rendering a container with the upcoming falling sprite
+    let index = 0;
+    for (let y = 0; y < 4; y++) {       // "y" is container"s height
+        for (let x = 0; x < 4; x++, index++) {   // "x" is container"s width
+            // creating, id"ing and positioning tiles the same way as the board
+            let tile = document.createElement("div"),
+                cssTile = tile.style;
 
-// refreshing all 0"s to background 
-const refreshTiles = () => {
-    scanBoard().map((xy) => {
-        let x = xy[0];
-        let y = xy[1];
-        let tile = document.getElementById("tetris__tile-x" + x + "y" + y);
+            tile.setAttribute("id", "tetris__upcoming-" + index); // setting id
+            addTileGeneralStyle(cssTile);                      // adding general styling
 
-        // excluding walls
-        if (x == 0 || x == boardWidth - 1 ) {
-            tile.style.backgroundColor = palette.wall; 
-        } else {
-            tile.style.backgroundColor = palette.background;
-        };
-    })
-};
+            // setting div position
+            tile.style.left = boardWidth * tileSize + (x * tileSize) + tileSize + "vh";
+            tile.style.top = 0 + y * tileSize + "vh";
 
-// scanning board rows to check if any are full 
-const scanRows = () => {
-    // counting home many rows are cleaned
-    let clearedRows = 0;
-
-    // looping through each row (except bottom line)
-    for (let y = 0; y < boardHeight - 1; y++) {
-       
-        let row = []
-
-            // looping through each tile in a row (except walls)
-            for (let x = 1; x < boardWidth - 1; x++) { 
-                // pushing appropriate tile index by getting it from coordinates on board
-                let ref = board[x][y]
-                row.push(ref)
-            };
-
-        // if any row is full of tiles with index 3, clear that row by passing Y coordinate..
-        // .. to clearRow() function
-        if (row.every( tileIndex => tileIndex === 3 )) {
-            clearedRows += 1;
-            clearRow(y);
-            pushRowsDown(y);
+            document.body.appendChild(tile);
         };
     };
-
-    if (clearedRows > 0) {
-        scoreCalc(clearedRows)
-    };
-};
-
-// scanning top line to end the game once structure reaches it
-const scanTopRow = () => {
-    let topRow = []
-    // looping through each column 
-    for (let x = 0; x < boardWidth - 1; x++) {
-        let ref = board[x][1]
-        topRow.push(ref)
-    };
-    // checking if any of the tiles at the top row include structure tile
-    if (topRow.includes(3)) {
-        // if yes, reset the game
-        gameReset();
-    };
-};
-
-// create score board, using on window load or game reset
-const renderScoreBoard = () => {
     // creating, id`ing and positioning top and session score
-    let sessionScore = document.createElement("p"),
-        topScore = document.createElement("p");
+    let score = document.createElement("p"),
+        topScore = document.createElement("p"),
+        cssScoreRef = score.style,
+        cssTopScoreRef = topScore.style;
 
-    sessionScore.setAttribute("id", "tetris__session-score");
-    sessionScore.style.position = "absolute";
-    sessionScore.style.color = palette.text;
-    sessionScore.style.left = boardWidth * tileSize + tileSize + "vh";
-    sessionScore.style.top = 7 * tileSize + "vh";
+        score.setAttribute("id", "tetris__session-score");
+        topScore.setAttribute("id", "tetris__top-score");            
+        cssScoreRef.position = cssTopScoreRef.position = "absolute";
+        cssScoreRef.color    = cssTopScoreRef.color = palette.text;
+        cssScoreRef.left     = cssTopScoreRef.left     = boardWidth * tileSize + tileSize + "vh";
+        cssScoreRef.top      = 7 * tileSize + "vh";
+        cssTopScoreRef.top   = 5 * tileSize + "vh";
 
-    topScore.setAttribute("id", "tetris__top-score");
-    topScore.style.position = "absolute";
-    topScore.style.color = palette.text;
-    topScore.style.left = boardWidth * tileSize + tileSize + "vh";
-    topScore.style.top = 5 * tileSize + "vh";
+        document.body.appendChild(score);
+        document.body.appendChild(topScore);
 
-    document.body.appendChild(sessionScore);
-    document.body.appendChild(topScore);
-
-    document.getElementById("tetris__session-score").innerHTML = "Score: 0";
-    document.getElementById("tetris__top-score").innerHTML = "Top: " + localStorage["topScore"] || 0;
+    resetGame(); // reset is needed for the initial load, as it also configures score board 
 };
 
-// adding total score depending on number of rows cleared
-const scoreCalc = (clearedRows) => {
-    switch (clearedRows) {
-        case 1:
-            score += 1000
+// keyboard controls
+document.addEventListener("keydown", e => {
+    refreshTiles();
+    // checking if there is no barrier before moving sprite
+    switch (e.code) {
+        case "ArrowLeft":
+            if (!checkForBarrier("left")) pushSpriteLeft();
             break;
-        case 2:
-            score += 2500
+        case "ArrowRight":
+            if (!checkForBarrier("right")) pushSpriteRight();
             break;
-        case 3:
-            score += 5000
+        case "ArrowDown":
+            if (!checkForBarrier("down")) pushSpriteDown();
+            break;
+        case "ArrowUp":
+            // bringing sprite max down
+            while (checkForBarrier("down") == false) pushSpriteDown();
             break;
         default:
-            score +=5;
-            
+            // not the best rotation mechanism, but overall prevents sprite colliding with other structures
+            if (!checkForBarrier("left") && !checkForBarrier("right") && !checkForBarrier("down")) {
+                rotateSprite();
+            }
     };
-    document.getElementById("tetris__session-score").innerHTML = "Score: " + score.toString();
-};
+    renderSprite();
+})
 
-// clearing row full of tile with index 3
-const clearRow = (y) => {
+// ************ OPTIONAL STYLING ************
+// below code enhances visual aspect of the game, though remains discretionary;
+// from here, everything can be removed without affecting gameplay
 
-    for (let x = 1; x < boardWidth - 1; x++) {
-        let tile = document.getElementById("tetris__tile-x" + x + "y" + y);
-        clearAnimation(tile, x, y)
-        board[x][y] = 0;
-        tile.style.backgroundColor = palette.background;
-    };
-};
+document.body.style.backgroundColor = palette.body;
+document.body.style.fontFamily = "Lucida Console";
 
 // animation for clearRow()
-const clearAnimation = (tileId, x, y) => {
+const clearRowAnim = (tileId, x, y) => {
     for (let i = 0; i < 4; i ++) {
-        // for each tile creating 4 "shards"
-        let shard = document.createElement("div");
-        // adding id to refer to shard later
-        let shardId = "tetris__shard-x" + x + i + "y" + y + i
+        let shard = document.createElement("div"),              // for each tile creating 4 "shards"
+            shardId = "tetris__shard-x" + x + i + "y" + y + i,  // shard's id string
+            cssShard = shard.style;     
+
         shard.setAttribute("id", shardId);
-        // basic styling
-        shard.style.position = "absolute";
-        shard.style.width = (tileSize / 2) + "vh";
-        shard.style.height = (tileSize / 2) + "vh";
-        shard.style.borderRadius = "10%";
-        shard.style.backgroundColor = palette.structure 
-        shard.style.zIndex = 1;
+        // general styling
+        position = "absolute";
+        cssShard.width = (tileSize / 2) + "vh";
+        cssShard.height = (tileSize / 2) + "vh";
+        cssShard.borderRadius = "10%";
+        cssShard.backgroundColor = palette.structure 
+        cssShard.zIndex = 1;
 
         // positioning each shard to one of the tile corners
         switch (i) {
-            case 0:
-                shard.style.left = 0;
-                shard.style.top = 0;
+            case 0: cssShard.left = 0; cssShard.top = 0;       // top left corner
                 break;
-            case 1:
-                shard.style.right = 0;
-                shard.style.top = 0;
+            case 1: cssShard.right = 0; cssShard.top = 0;      // top right corner
                 break;
-            case 2:
-                shard.style.right = 0;
-                shard.style.bottom = 0;
+            case 2: cssShard.right = 0; cssShard.bottom = 0;   // bottom right corner
                 break;
-            case 3:
-                shard.style.left = 0;
-                shard.style.bottom = 0;
+            case 3: cssShard.left = 0; cssShard.bottom = 0;    // bottom left corner
                 break;
         }
 
-        const randomNumber = (min,max) => {
-            return Math.floor((Math.random() * (max -min) + min));
-        }
+        tileId.appendChild(shard); // appending to DOM
+
+        let shardRef = document.getElementById(shardId); 
         // creating random position in pixels for shard
-        let rndm = randomNumber(-tileSize*2, tileSize*2) + "vh," + randomNumber(-tileSize*2, tileSize*2) + "vh"
-
-        // appending shard to the tile
-        tileId.appendChild(shard);
-
-        let shardRef = document.getElementById(shardId);   
-
+        const rndmPx = () => {return (getRndmNum(-tileSize*2, tileSize*2) + "vh")};
         // animation style
         let anim = [
-            { transform: "translate(0)",
-              opacity: 1},
-            { transform: `translate(${rndm})`,
-              opacity: -1}
+            { transform: "translate(0)", opacity: 1},
+            { transform: `translate(${rndmPx() + " , " + rndmPx()})`, opacity: -1}
         ];
         // animation speed and duration
-        let animTiming = {
-            duration: 275,
-            iterations: Infinity
-          }
+        let animTiming = {duration: 275, iterations: Infinity} // animation should be slightly longer than timeout before div removal
 
-        shardRef.animate(
-            anim,
-            animTiming
-        )
-        // delete shard from DOM; timeout is a bit shorter than anim duration to prevent anim replay 
+        shardRef.animate(anim, animTiming); // adding animation to the shard
+        
         setTimeout(() => {
-            shardRef.remove()
+            shardRef.remove(); // remove shard from DOM after playing animation;
         }, 250);
     }
 }
-
-// pushing down rows that are above the cleared row
-const pushRowsDown = (y) => {
-    // looping through each column 
-    for (let x = 1; x < boardWidth - 1; x++) {
-        
-        // "shifting down" an entire column by:
-        board[x].splice(y, 1);              // 1) removing last index tile
-        board[x].splice(0, 0, 0);           // 2) adding 0 index tile at front
-
-        // looping through each row and further refreshing board look
-        for (let y = 0; y < boardHeight - 1; y++) {
-            let tile = document.getElementById("tetris__tile-x" + x + "y" + y);
-
-            if (board[x][y] == 0) {
-                tile.style.backgroundColor = palette.background;
-            }
-            else {
-                tile.style.backgroundColor = palette.structure;
-            };
-        };
-    };
-};
