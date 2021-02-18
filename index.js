@@ -484,12 +484,12 @@ window.onload = () => {
             renderSprite();
         }
         let interval
-        let timeOut
+        let timekek
         // on screen controls - same as keyboard
         // TODO - merge on screen and keyboard controls as they follow same logic
-        buttonRef.addEventListener("mousedown", () => {
-            
-            timeOut = setTimeout(()=> {
+        buttonRef.addEventListener("mousedown", (e) => {
+            e.preventDefault();
+            timekek = setTimeout(()=> {
                 interval = setInterval(()=>handleControl(buttons[i]), 100);
             }, 500);
           
@@ -498,27 +498,13 @@ window.onload = () => {
             
             
         })
-        buttonRef.addEventListener("mouseup", () => {
+        buttonRef.addEventListener("mouseup", (e) => {
+            e.preventDefault();
             clearInterval(interval);
-            clearTimeout(timeOut)
+            clearTimeout(timekek)
           });
 
     }          
-    buttonRef.addEventListener("ontouchstart", () => {
-            
-        timeOut = setTimeout(()=> {
-            interval = setInterval(()=>handleControl(buttons[i]), 100);
-        }, 500);
-      
-
-        // checking if there is no barrier before moving sprite
-        
-        
-    })
-    buttonRef.addEventListener("ontouchend", () => {
-        clearInterval(interval);
-        clearTimeout(timeOut)
-      });
 
      
     resetGame(); // reset is needed for the initial load, as it also configures score board 
