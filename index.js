@@ -334,8 +334,8 @@ window.onload = () => {
 
     gameScreen.setAttribute("id", "tetris__screen"); // setting id
     cssgameScreen.position = "relative"
-    cssgameScreen.width = "35vh"
-    cssgameScreen.paddingBottom = "35vh"; // using padding instead of height (preserves game ratio)
+    cssgameScreen.width = "32vh"
+    cssgameScreen.paddingBottom = "32vh"; // using padding instead of height (preserves game ratio)
     
     document.body.appendChild(gameScreen);
 
@@ -484,12 +484,13 @@ window.onload = () => {
             renderSprite();
         }
         let interval
-        let timekek
+        let timeOut
         // on screen controls - same as keyboard
         // TODO - merge on screen and keyboard controls as they follow same logic
-        buttonRef.addEventListener("mousedown", (e) => {
+        buttonRef.addEventListener("touchstart", (e) => {
+            handleControl(buttons[i])
             e.preventDefault();
-            timekek = setTimeout(()=> {
+            timeOut = setTimeout(()=> {
                 interval = setInterval(()=>handleControl(buttons[i]), 100);
             }, 500);
           
@@ -498,13 +499,28 @@ window.onload = () => {
             
             
         })
-        buttonRef.addEventListener("mouseup", (e) => {
+        buttonRef.addEventListener("touchend", (e) => {
             e.preventDefault();
             clearInterval(interval);
-            clearTimeout(timekek)
+            clearTimeout(timeOut)
           });
 
     }          
+    // buttonRef.addEventListener("ontouchstart", () => {
+            
+    //     timekek = setTimeout(()=> {
+    //         interval = setInterval(()=>handleControl(buttons[i]), 100);
+    //     }, 500);
+      
+
+    //     // checking if there is no barrier before moving sprite
+        
+        
+    // })
+    // buttonRef.addEventListener("ontouchend", () => {
+    //     clearInterval(interval);
+    //     clearTimeout(timekek)
+    //   });
 
      
     resetGame(); // reset is needed for the initial load, as it also configures score board 
