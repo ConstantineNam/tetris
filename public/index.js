@@ -75,6 +75,12 @@ let sprites = [spriteA, spriteB, spriteC, spriteD, spriteE, spriteF, spriteG];
 // initial state of board as a one-dementional array of 0`s
 let board = new Array(boardHeight).fill(0);
 
+// current score
+let score = 0;
+
+// using local storage to keep top score; if doesnt exist - set to 0
+localStorage['topScore'] = localStorage['topScore'] || 0;
+
 // random number generator with ability to set range
 const getRndmNum = (min,max) => {
     return Math.floor((Math.random() * (max -min) + min));
@@ -88,9 +94,6 @@ const getRndmSprite = () => {
 let activeSprite = getRndmSprite(),                             // declaring active sprite
     upcomingSprite = getRndmSprite(),                           // declaring upcoming sprite
     spritePosition = {x: Math.round(boardWidth / 2) - 2,y: -1}; // declaring active sprite position
-
-let score = 0,                                      // initial score
-    topScoreRef = localStorage['topScore'] || 0;    // using local storage to keep top score;
 
 const build = () => {
     locateSprite().map((xy) => {
@@ -182,11 +185,11 @@ const recalculateScore = (clearedRows) => {
             break;
         default: score += 10; // default adds extra points for every sprite built on board
     };
-    document.getElementById("tetris__session-score").innerHTML = "Score: " + score.toString();
+    document.getElementById("tetris__session-score").innerHTML = "Scr: " + score.toString();
 };
 
 const refreshScores = () => {
-    document.getElementById("tetris__session-score").innerHTML = "Score: 0";
+    document.getElementById("tetris__session-score").innerHTML = "Scr: 0";
     document.getElementById("tetris__top-score").innerHTML = "Top: " + localStorage["topScore"] || 0;
 };
 
@@ -240,15 +243,16 @@ const resetBoard = () => {
 const resetGame = () => {
     resetBoard();
     refreshScores();
-    score = 0;          // resetting session score to 0
     
-    let storedTopScore = localStorage['topScore'];
+    let storedTopScore = localStorage["topScore"];
     // updating top score if its higher than the prev one
     if (storedTopScore && score > storedTopScore) {
-        localStorage['topScore'] = score;
+        localStorage["topScore"] = score;
     }
     // updating top score on score board
     document.getElementById("tetris__top-score").innerHTML = "Top: " + localStorage["topScore"] || 0;
+
+    score = 0;          // resetting session score to 0
 };
 
 // finds and scans 4x4 sprite and returns coordinates of solid tiles
@@ -273,8 +277,8 @@ const placeSprite = () => {
     checkIfGameOver();                      // check if game 
     clearSolidRows();                       // clear rows if completely filled
     activeSprite = [...upcomingSprite];     // swap current and upcoming sprite
-    upcomingSprite = getRndmSprite();     // generate next sprite
-    renderUpcomingSprite();                       // update upcoming container
+    upcomingSprite = getRndmSprite();       // generate next sprite
+    renderUpcomingSprite();                 // update upcoming container
     resetSpritePosition();                  // reset active sprite position
 };
 
@@ -365,8 +369,9 @@ window.onload = () => {
         cssgameScreen = gameScreen.style;
 
     gameScreen.setAttribute("id", "tetris__screen"); // setting id
-    cssgameScreen.position = "relative"
-    cssgameScreen.width = "32vh"
+    cssgameScreen.position = "relative";
+    cssgameScreen.width = "32vh"; 
+    cssgameScreen.top = tileSize * 2 + "px"; 
     cssgameScreen.paddingBottom = "32vh"; // using padding instead of height (preserves game ratio)
     
     document.body.appendChild(gameScreen);
@@ -437,7 +442,8 @@ window.onload = () => {
         topScore.setAttribute("id", "tetris__top-score");            
         cssScoreRef.position = cssTopScoreRef.position = "absolute";
         cssScoreRef.color    = cssTopScoreRef.color    = palette.text;
-        cssScoreRef.left     = cssTopScoreRef.left      = tileSize * 6 + "%";
+        cssScoreRef.fontSize = cssTopScoreRef.fontSize = "2vh";
+        cssScoreRef.left     = cssTopScoreRef.left     = tileSize * 6 + "%";
         cssScoreRef.top      = tileSize + "%";
         cssTopScoreRef.top   = "0";
 
@@ -459,8 +465,12 @@ window.onload = () => {
         button.setAttribute("id", "tetris__button" + i); // setting id
         // sizing and positioning
         cssButton.position = "absolute"
-        cssButton.width = tileSize * 2 + "%"
-        cssButton.height = tileSize * 2 + "%"
+
+        let rotateBtnSize = 1; // enlarge rotate button only
+        if (i == 4) rotateBtnSize = 1.5;
+
+        cssButton.width = tileSize * 2 * rotateBtnSize + "%"
+        cssButton.height = tileSize * 2 * rotateBtnSize + "%"
         switch (i) {
             case 0:
                 cssButton.left = 0;
@@ -479,8 +489,8 @@ window.onload = () => {
                 cssButton.top  = (tileSize * 26) + "%";
                 break;
             default: 
-                cssButton.left = tileSize * 10 + "%";
-                cssButton.top  = (tileSize * 28) + "%";
+                cssButton.left = tileSize * 8.8 + "%";
+                cssButton.top  = (tileSize * 27.5) + "%";
         }; 
         gameScreenRef.appendChild(button);
 
@@ -510,7 +520,6 @@ window.onload = () => {
             clearInterval(loopMvtOnHold);
             clearTimeout(awaitLoopMvt)
         }
-
         // adding on screen control
         "mousedown touchstart".split(" ").forEach((e) => {
             buttonRef.addEventListener(e, () => onClickListener(), false);
@@ -519,7 +528,6 @@ window.onload = () => {
             buttonRef.addEventListener(e, () => onReleaseListener(), false);
         });
     }
-    
     // adding keyboard controls
     document.addEventListener("keydown", e => {
         if (e.code == "ArrowDown") isManuallyPushedDown = true;
@@ -541,25 +549,41 @@ let cssBody = document.body.style
 cssBody.display = "flex"
 cssBody.justifyContent = "center"
 cssBody.alignItems = "center"
-
 cssBody.fontFamily = "Lucida Console";
 
+document.body.style.backgroundColor = palette.body;
+
+let gameCase = document.createElement("div"), // creating case container
+    cssGameCase = gameCase.style;
+
+gameCase.setAttribute("id", "tetris__case"); // setting id
+cssGameCase.position = "absolute";
+cssGameCase.maxWidth = "45vh"; 
+cssGameCase.width = "95%"; 
+cssGameCase.height = "91vh";
+cssGameCase.top = tileSize + "px"; 
+cssGameCase.background = "#202225"; 
+cssGameCase.borderRadius = "5vh 5vh 15vh 5vh";
+
+document.body.appendChild(gameCase);
+
 const addTileOptionalStyle = (cssTile) => {  
-    cssTile.border = "1px solid rgba(255,255,255,.05 )"; 
-    cssTile.borderRadius = "35%"; 
+    cssTile.borderRadius = "25%"; 
     cssTile.boxSizing = "border-box";
 }
 
 const addBtnStyle = (cssButton) => {
-    cssButton.fontSize =  "150%";
+    cssButton.fontSize =  "3vh";
     cssButton.outline = "none"
     cssButton.border = `2px solid ${palette.sprite}`;
     cssButton.cursor = "pointer"
     cssButton.borderRadius = "35%"
     cssButton.transition = ".1s ease-in-out"
     cssButton.userSelect = "none";
+    cssButton.boxSizing = "border-box";
     cssButton.background = palette.background;
     cssButton.color =  palette.sprite;
+    cssButton.padding =  0;
 }
 
 const toggleBtnActiveStyle = (cssButton, add) => {
