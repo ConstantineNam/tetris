@@ -495,14 +495,18 @@ window.onload = () => {
         
         const onClickListener = () => {
             isManuallyPushedDown = true;    // while true - stopping automatic fall 
-            handleControl(buttons[i]);  // 
+            handleControl(buttons[i]);
+            // checks if optional styling is present in the code before firing (see end of file)
+            if (typeof toggleBtnActiveStyle === "function") toggleBtnActiveStyle(cssButton, true); 
             awaitLoopMvt = setTimeout(()=> {
                 loopMvtOnHold = setInterval(()=>handleControl(buttons[i]), 50);
             }, 350);
         }
 
         const onReleaseListener = () => {
-            isManuallyPushedDown = false;   // while false - continuing automatic fall 
+            isManuallyPushedDown = false;   // while false - continuing automatic fall
+            // checks if optional styling is present in the code before firing (see end of file)
+            if (typeof toggleBtnActiveStyle === "function") toggleBtnActiveStyle(cssButton, false) ; 
             clearInterval(loopMvtOnHold);
             clearTimeout(awaitLoopMvt)
         }
@@ -547,12 +551,6 @@ const addTileOptionalStyle = (cssTile) => {
 }
 
 const addBtnStyle = (cssButton) => {
-
-    //   .tetris__btn:active {
-    //     box-shadow:  none;
-    //     color:  #1A1A1A;
-    //     background-color:  #FBC02D !important;
-    //   }
     cssButton.fontSize =  "150%";
     cssButton.outline = "none"
     cssButton.border = `2px solid ${palette.sprite}`;
@@ -563,6 +561,21 @@ const addBtnStyle = (cssButton) => {
     cssButton.background = palette.background;
     cssButton.color =  palette.sprite;
 }
+
+const toggleBtnActiveStyle = (cssButton, add) => {
+    if (add == true) {
+        cssButton.color = palette.background; 
+        cssButton.background = palette.sprite;
+    }
+    else {
+        cssButton.background = palette.background;
+        cssButton.color =  palette.sprite;
+    }
+}
+
+style.innerHTML = '.cssClass {color:  #1A1A1A !important; background-color:  #FBC02D !important}';
+
+document.getElementById('someElementId').className = 'cssClass';
 
 // animation for clearRow()
 const clearRowAnim = (tileId, x, y) => {
@@ -578,7 +591,7 @@ const clearRowAnim = (tileId, x, y) => {
         cssShard.position = "absolute";
         cssShard.width = "50%";
         cssShard.height = "50%";
-        cssShard.borderRadius = "35%";
+        cssShard.borderRadius = "15%";
         cssShard.backgroundColor = shardColors[getRndmNum(0, shardColors.length)];
         cssShard.zIndex = 1;
 
@@ -598,19 +611,19 @@ const clearRowAnim = (tileId, x, y) => {
     
         let shardRef = document.getElementById(shardId); 
         // creating random position in pixels for shard
-        const rndmPx = () => {return (getRndmNum(-tileSize*20, tileSize*20) + "%")};
+        const rndmPx = () => {return (getRndmNum(-tileSize*50, tileSize*50) + "%")};
         // animation style
         let anim = [
             { transform: "translate(0) rotate(0)", opacity: 1},
             { transform: `translate(${rndmPx() + " , " + rndmPx()}) rotate(${getRndmNum(-180, 180)}deg)`, opacity: 0}
         ];
         // animation speed and duration
-        let animTiming = {duration: 325, iterations: Infinity} // animation should be slightly longer than timeout before div removal
+        let animTiming = {duration: 425, iterations: Infinity} // animation should be slightly longer than timeout before div removal
 
         shardRef.animate(anim, animTiming); // adding animation to the shard
         
         setTimeout(() => {
             shardRef.remove(); // remove shard from DOM after playing animation;
-        }, 300);
+        }, 400);
     }
 }
