@@ -505,7 +505,7 @@ window.onload = () => {
         
         const onClickListener = () => {
             // while true - stopping automatic fall, only applying to down arrow 
-            if (i == 2)isManuallyPushedDown = true;  
+            if (i == 2) isManuallyPushedDown = true;  
             handleControl(buttons[i]);
             // checks if optional styling is present in the code before firing (see end of file)
             if (typeof toggleBtnActiveStyle === "function") toggleBtnActiveStyle(cssButton, true); 
@@ -515,7 +515,7 @@ window.onload = () => {
         }
 
         const onReleaseListener = () => {
-            isManuallyPushedDown = false;   // while false - continuing automatic fall
+            if (i == 2) isManuallyPushedDown = false;   // while false - continuing automatic fall
             // checks if optional styling is present in the code before firing (see end of file)
             if (typeof toggleBtnActiveStyle === "function") toggleBtnActiveStyle(cssButton, false) ; 
             clearInterval(loopMvtOnHold);
@@ -525,7 +525,7 @@ window.onload = () => {
         "mousedown touchstart".split(" ").forEach((e) => {
             buttonRef.addEventListener(e, () => onClickListener(), false);
         });
-        "mouseup touchend".split(" ").forEach((e) => {
+        "mouseout mouseup touchend".split(" ").forEach((e) => {
             buttonRef.addEventListener(e, () => onReleaseListener(), false);
         });
     }
