@@ -504,13 +504,14 @@ window.onload = () => {
         let awaitLoopMvt;   // waiting time looping movement
         
         const onClickListener = () => {
-            isManuallyPushedDown = true;    // while true - stopping automatic fall 
+            // while true - stopping automatic fall, only applying to down arrow 
+            if (i == 2)isManuallyPushedDown = true;  
             handleControl(buttons[i]);
             // checks if optional styling is present in the code before firing (see end of file)
             if (typeof toggleBtnActiveStyle === "function") toggleBtnActiveStyle(cssButton, true); 
             awaitLoopMvt = setTimeout(()=> {
                 loopMvtOnHold = setInterval(()=>handleControl(buttons[i]), 50);
-            }, 350);
+            }, 500);
         }
 
         const onReleaseListener = () => {
