@@ -317,10 +317,42 @@ const pushSpriteDown = () => {spritePosition.y += 1},
       pushSpriteLeft = () => {spritePosition.x -= 1},
       pushSpriteRight = () => {spritePosition.x += 1};
 
+// control handling (used for both keyboard and on screen)
+const handleControl = (e) => {
+    refreshTiles();
+    // checking if there is no barrier before moving sprite
+    switch (e.code) {
+        case "ArrowLeft":
+            if (!checkForBarrier("left")) pushSpriteLeft();
+            break;
+        case "ArrowRight":
+            if (!checkForBarrier("right")) pushSpriteRight();
+            break;
+        case "ArrowDown":
+            if (!checkForBarrier("down")) pushSpriteDown();
+            break;
+        case "Space":
+            // bringing sprite max down
+            while (checkForBarrier("down") == false) pushSpriteDown();
+            break;
+        case "ArrowUp":
+            // not the best rotation mechanism, but overall prevents sprite colliding with other structures
+            if (!checkForBarrier("left") && !checkForBarrier("right") && !checkForBarrier("down")) {
+                rotateSprite();
+            }
+    };
+    renderSprite();
+}      
+
+// preventing automatic pushing down when using arrow down control
+// toggles on mouse up/down and touch start/end listeners
+let isManuallyPushedDown = false;  
 // setting a game turn
 const handleGameTurn = () => {
     refreshTiles();                                 // refreshing all 0`s color them as background
-    if (!checkForBarrier("down")) pushSpriteDown(); // pushing sprite position down
+    if (!checkForBarrier("down") && !isManuallyPushedDown) {
+        pushSpriteDown();                           // pushing sprite position down
+    } 
     renderSprite();                                 // coloring sprite 
 }
 
@@ -416,8 +448,8 @@ window.onload = () => {
     let buttons = [ { code: "ArrowLeft", val: "◁"},
                     { code: "ArrowRight", val: "▷"},
                     { code: "ArrowDown", val: "▽"},
-                    { code: "ArrowUp", val: "△"},
-                    { code: "Space", val: "☉"},
+                    { code: "Space", val: "△"},     // swapping up arrow and space bar..
+                    { code: "ArrowUp", val: "↺"},   // ..functions for screen controls
                   ]
     // dynamically creating buttons
     for (let i = 0; i < buttons.length; i++) {
@@ -431,24 +463,24 @@ window.onload = () => {
         cssButton.height = tileSize * 2 + "%"
         switch (i) {
             case 0:
-                cssButton.left = tileSize + "%";
-                cssButton.top  = (tileSize * 29) + "%";
+                cssButton.left = 0;
+                cssButton.top  = (tileSize * 28) + "%";
                 break;
             case 1:
-                cssButton.left = tileSize * 5 + "%";
-                cssButton.top  = (tileSize * 29) + "%";
+                cssButton.left = tileSize * 4 + "%";
+                cssButton.top  = (tileSize * 28) + "%";
                 break;
             case 2:
-                cssButton.left = tileSize * 3 + "%";
-                cssButton.top  = (tileSize * 31) + "%";
+                cssButton.left = tileSize * 2 + "%";
+                cssButton.top  = (tileSize * 30) + "%";
                 break;
             case 3:
-                cssButton.left = tileSize * 3 + "%";
-                cssButton.top  = (tileSize * 27) + "%";
+                cssButton.left = tileSize * 2 + "%";
+                cssButton.top  = (tileSize * 26) + "%";
                 break;
             default: 
-                cssButton.left = tileSize * 9 + "%";
-                cssButton.top  = (tileSize * 29) + "%";
+                cssButton.left = tileSize * 10 + "%";
+                cssButton.top  = (tileSize * 28) + "%";
         }; 
         gameScreenRef.appendChild(button);
 
@@ -458,100 +490,43 @@ window.onload = () => {
         // checks if optional styling is present in the code before firing (see end of file)
         if (typeof addBtnStyle === "function") addBtnStyle(buttonRef.style); 
 
-        // switch (buttons[i].code) {
-        const handleControl = (stuff) => {
-            refreshTiles();
-            switch (stuff.code) {
-                case "ArrowLeft":
-                    if (!checkForBarrier("left")) pushSpriteLeft();
-                    break;
-                case "ArrowRight":
-                    if (!checkForBarrier("right")) pushSpriteRight();
-                    break;
-                case "ArrowDown":
-                    if (!checkForBarrier("down")) pushSpriteDown();
-                    break;
-                case "ArrowUp":
-                    // bringing sprite max down
-                    while (checkForBarrier("down") == false) pushSpriteDown();
-                    break;
-                case "Space":
-                    // not the best rotation mechanism, but overall prevents sprite colliding with other structures
-                    if (!checkForBarrier("left") && !checkForBarrier("right") && !checkForBarrier("down")) {
-                        rotateSprite();
-                    }
-            };
-            renderSprite();
+        let loopMvtOnHold;  // looping movement while holding screen control
+        let awaitLoopMvt;   // waiting time looping movement
+        
+        const onClickListener = () => {
+            isManuallyPushedDown = true;    // while true - stopping automatic fall 
+            handleControl(buttons[i]);  // 
+            awaitLoopMvt = setTimeout(()=> {
+                loopMvtOnHold = setInterval(()=>handleControl(buttons[i]), 50);
+            }, 350);
         }
-        let interval
-        let timeOut
-        // on screen controls - same as keyboard
-        // TODO - merge on screen and keyboard controls as they follow same logic
-        buttonRef.addEventListener("touchstart", (e) => {
-            handleControl(buttons[i])
-            e.preventDefault();
-            timeOut = setTimeout(()=> {
-                interval = setInterval(()=>handleControl(buttons[i]), 100);
-            }, 500);
-          
 
-            // checking if there is no barrier before moving sprite
-            
-            
-        })
-        buttonRef.addEventListener("touchend", (e) => {
-            e.preventDefault();
-            clearInterval(interval);
-            clearTimeout(timeOut)
-          });
+        const onReleaseListener = () => {
+            isManuallyPushedDown = false;   // while false - continuing automatic fall 
+            clearInterval(loopMvtOnHold);
+            clearTimeout(awaitLoopMvt)
+        }
 
-    }          
-    // buttonRef.addEventListener("ontouchstart", () => {
-            
-    //     timekek = setTimeout(()=> {
-    //         interval = setInterval(()=>handleControl(buttons[i]), 100);
-    //     }, 500);
-      
+        // adding on screen control
+        "mousedown touchstart".split(" ").forEach((e) => {
+            buttonRef.addEventListener(e, () => onClickListener(), false);
+        });
+        "mouseup touchend".split(" ").forEach((e) => {
+            buttonRef.addEventListener(e, () => onReleaseListener(), false);
+        });
+    }
+    
+    // adding keyboard controls
+    document.addEventListener("keydown", e => {
+        if (e.code == "ArrowDown") isManuallyPushedDown = true;
+        handleControl(e);
+    })
+    document.addEventListener("keyup", e => {
+        if (e.code == "ArrowDown") isManuallyPushedDown = false;
+    })
 
-    //     // checking if there is no barrier before moving sprite
-        
-        
-    // })
-    // buttonRef.addEventListener("ontouchend", () => {
-    //     clearInterval(interval);
-    //     clearTimeout(timekek)
-    //   });
-
-     
     resetGame(); // reset is needed for the initial load, as it also configures score board 
 };
-
-// keyboard controls
-document.addEventListener("keydown", e => {
-    refreshTiles();
-    // checking if there is no barrier before moving sprite
-    switch (e.code) {
-        case "ArrowLeft":
-            if (!checkForBarrier("left")) pushSpriteLeft();
-            break;
-        case "ArrowRight":
-            if (!checkForBarrier("right")) pushSpriteRight();
-            break;
-        case "ArrowDown":
-            if (!checkForBarrier("down")) pushSpriteDown();
-            break;
-        case "ArrowUp":
-            // bringing sprite max down
-            while (checkForBarrier("down") == false) pushSpriteDown();
-            break;
-        case "Space":
-            // not the best rotation mechanism, but overall prevents sprite colliding with other structures
-            if (!checkForBarrier("left") && !checkForBarrier("right") && !checkForBarrier("down")) {
-                rotateSprite();
-            }
-    };
-    renderSprite();
-})
 
 // ************ OPTIONAL STYLING ************
 // below code enhances visual aspect of the game, though remains discretionary;
@@ -578,8 +553,6 @@ const addBtnStyle = (cssButton) => {
     //     color:  #1A1A1A;
     //     background-color:  #FBC02D !important;
     //   }
-      
-      
     cssButton.fontSize =  "150%";
     cssButton.outline = "none"
     cssButton.border = `2px solid ${palette.sprite}`;
@@ -590,10 +563,6 @@ const addBtnStyle = (cssButton) => {
     cssButton.background = palette.background;
     cssButton.color =  palette.sprite;
 }
-
-// const addBtnPressedStyle = (cssButton) 
-
-
 
 // animation for clearRow()
 const clearRowAnim = (tileId, x, y) => {
