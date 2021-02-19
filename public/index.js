@@ -400,6 +400,7 @@ window.onload = () => {
             cssTile.position = "absolute";  
             cssTile.width = tileSize * 0.85 + "%";
             cssTile.height = tileSize * 0.85 + "%";
+            cssTile.userSelect = "none";
             if (tileType == 1) cssTile.background = palette.border;            // coloring walls
             else if (tileType == 2) cssTile.background = palette.border;     // coloring bottom
             else cssTile.background = palette.background;                    // coloring background
@@ -571,6 +572,7 @@ cssGameCase.height = "91vh";
 cssGameCase.top = tileSize + "px"; 
 cssGameCase.background = "#202225"; 
 cssGameCase.borderRadius = "5vh 5vh 15vh 5vh";
+cssGameCase.userSelect = "none";
 
 document.body.appendChild(gameCase);
 
