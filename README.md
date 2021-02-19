@@ -1,10 +1,10 @@
 # tetris
 A pure JavaScript scalable and responsive tetris knockoff. 
 
+Works well with both keyboard and on-screen control (touch or mouse click).
 Saves top score in local storage, making it available after restarting session.
 
-Some optional animation and styling made it bulkier rather than if using separate CSS sheet,
-but the idea was to deliver it in a single file.
+Some optional animation and styling made it bulkier rather than if using separate CSS sheet, but the idea was to deliver it in a single file.
 
 Sprites are customisable, just make sure max width remains 
 
