@@ -523,10 +523,16 @@ window.onload = () => {
         }
         // adding on screen control
         "mousedown touchstart".split(" ").forEach((e) => {
-            buttonRef.addEventListener(e, () => onClickListener(), false);
+            buttonRef.addEventListener(e, (z) => {            
+                onClickListener(); 
+                z.preventDefault();       // preventing firing both events
+            }, false);
         });
         "mouseout mouseup touchend".split(" ").forEach((e) => {
-            buttonRef.addEventListener(e, () => onReleaseListener(), false);
+            buttonRef.addEventListener(e, (z) => {
+                onReleaseListener();
+                z.preventDefault();       // preventing firing both events
+            }, false);
         });
     }
     // adding keyboard controls
